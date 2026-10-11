@@ -105,13 +105,22 @@ bash scripts/bootstrap_server.sh
 docker compose -f docker/docker-compose.yml build
 ```
 
+你可以通过复制 `docker/.env.example` 为 `docker/.env` 并按需修改其中的路径变量（如 `HOST_DATA_DIR`），来将服务器上的数据和模型缓存目录挂载进容器。
+
 进入容器：
 
 ```bash
 docker compose -f docker/docker-compose.yml run --rm cgcwra
 ```
 
-容器内默认工作目录为 `/workspace`，并挂载当前仓库。缓存和输出都写回宿主机的已忽略目录。
+或者启动后台容器再通过 exec 进入：
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+docker exec -it cgcwra-container /bin/bash
+```
+
+容器内默认工作目录为 `/workspace/cgcwra`，并挂载当前仓库。缓存和输出都通过卷挂载写回宿主机对应的 `artifacts/`、`outputs/` 和 `data/` 目录。
 
 ## 训练入口
 
@@ -127,7 +136,17 @@ bash scripts/train.sh configs/train/example.yaml --dry-run
 bash scripts/eval.sh configs/train/example.yaml --dry-run
 ```
 
-当前 `src/cgcwra/train/cli.py` 是最小可运行骨架，方便后续逐步替换成真实训练逻辑。
+目前已实现论文中的核心 CG-CWRA 模块：对 ViT 输出的
+`[batch, windows, patches, hidden]` 特征进行窗口级池化、坐标编码、带相对位置偏置的全连接图注意力，并把关系增量广播回每个 patch。它不改变 patch 数量或顺序，可直接接在既有连接器之前。
+
+```python
+from cgcwra.models import CGCWRAAdapter, CGCWRAConfig
+
+adapter = CGCWRAAdapter(CGCWRAConfig(hidden_size=1024, num_heads=8))
+enhanced_features = adapter(vit_patch_features, window_grid_coordinates)
+```
+
+`scripts/train.sh ... --dry-run` 会校验 YAML 并报告新增参数量。真正的端到端训练需按选定的 TextMonkey 或 Mini-Monkey 基座补充数据与连接器适配，冻结策略由 `configs/train/example.yaml` 明确记录。
 
 ## 后续建议
 

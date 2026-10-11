@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  cgcwra:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: cgcwra-env:latest
+    container_name: cgcwra-container
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - WANDB_API_KEY=${WANDB_API_KEY:-}
+      - HF_HOME=/workspace/cgcwra/artifacts/hf_cache
+    volumes:
+      - ..:/workspace/cgcwra
+      - ${HOST_DATA_DIR:-../data}:/workspace/cgcwra/data
+      - ${HOST_CHECKPOINT_DIR:-../artifacts/checkpoints}:/workspace/cgcwra/artifacts/checkpoints
+      - ${HOST_PRETRAINED_DIR:-../artifacts/pretrained}:/workspace/cgcwra/artifacts/pretrained
+      - ${HOST_HF_CACHE_DIR:-../artifacts/hf_cache}:/workspace/cgcwra/artifacts/hf_cache
+      - ${HOST_OUTPUTS_DIR:-../outputs}:/workspace/cgcwra/outputs
+    ipc: host
+    network_mode: host
+    tty: true
+    stdin_open: true
+    command: /bin/bash

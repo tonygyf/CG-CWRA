@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Data and Models
+data/
+checkpoints/
+outputs/
+logs/
+.cache/
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+.venv
+env/
+venv/
+ENV/
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.thm
+*.toc
+*.pdf
+
+# IDEs
+.idea/
+.vscode/
+.spyderproject
+.spyproject
+.ropeproject
+
+# OS
+.DS_Store

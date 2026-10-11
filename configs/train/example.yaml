@@ -1,0 +1,21 @@
+# A dry-run configuration for the standalone CG-CWRA module. Integrations can
+# retain the model block and add backbone/dataset arguments.
+seed: 42
+output_dir: outputs/experiments/example
+
+model:
+  hidden_size: 1024
+  num_heads: 8
+  num_layers: 2
+  mlp_ratio: 2.0
+  dropout: 0.0
+  coordinate_hidden_size: 128
+  relative_hidden_size: 128
+
+training:
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  epochs: 3
+  align_loss_weight: 0.0
+  freeze_vision_encoder: true
+  freeze_language_model: true

@@ -1,0 +1,4 @@
+# Install a PyTorch wheel matching the server CUDA version before, or let pip
+# resolve the default CPU wheel for smoke tests.
+torch>=2.1
+PyYAML>=6.0

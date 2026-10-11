@@ -1,0 +1,296 @@
+% !TEX program = xelatex
+%% main.tex — IEEE Journal 论文主干（LaTeX / IEEEtran / Overleaf 版）
+%% 编译方式：Overleaf 中将 Compiler 设为 XeLaTeX（菜单 Menu -> Compiler -> XeLaTeX）
+%% 依赖：IEEEtran.cls（texlive-publishers）、ctex（texlive-lang-chinese）
+
+\documentclass[journal]{IEEEtran}
+
+% ---------- 中文支持：XeLaTeX + ctex ----------
+\usepackage{ctex}
+
+% ---------- 常用宏包 ----------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\interdisplaylinepenalty=2500
+
+% ---------- 中文标签（把 Abstract / Index Terms 改成中文）----------
+\renewcommand{\abstractname}{摘要}
+\renewcommand{\IEEEkeywordsname}{关键词}
+
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+% ======================= 标题 / 作者 =======================
+\title{坐标引导的跨窗口关系适配器：面向高分辨率文档多模态大模型的长程结构感知方法\\
+\large Coordinate-Guided Cross-Window Relation Adapter: A Long-Range Structure-Aware Method for High-Resolution Document Multimodal Large Language Models}
+
+\author{郭岩峰
+\thanks{郭岩峰\quad 大连理工大学软件学院\quad 电子邮箱：gt766457@gmail.com}
+\thanks{稿件完成日期：2026年9月30日}}
+
+% 页眉——请替换为实际期次/作者信息
+\markboth{深度学习课程论文，2026年9月}%
+{郭岩峰: 坐标引导的跨窗口关系适配器}
+
+\maketitle
+
+% ======================= 摘要 / 关键词 =======================
+\begin{abstract}
+高分辨率文档图像理解是多模态大模型的重要研究方向。为处理超出视觉编码器原生分辨率的输入，Monkey 系列方法将图像切分为若干局部窗口分别编码，但由此带来窗口间语义关联缺失的问题：当表格、键值对等结构化信息被切分边界打断时，模型难以正确关联分处不同窗口的内容。TextMonkey 通过零初始化的位移窗口注意力实现相邻窗口间的局部信息交互，Mini-Monkey 通过互补图像金字塔提供多尺度上下文，但二者均未显式建模任意两个窗口之间、尤其是相隔较远窗口之间的长程关系。本文提出一种坐标引导的跨窗口关系适配器（Coordinate-Guided Cross-Window Relation Adapter，简称 CG-CWRA），在冻结视觉编码器与语言模型参数的前提下，仅在窗口特征进入视觉-语言连接器之前插入一个轻量级图注意力模块：该模块以每个窗口在原图网格中的二维坐标为条件，构建融合内容相似度与相对位置偏置的注意力权重，使任意窗口对均可直接交换信息，弥补现有方法交互范围局限于相邻窗口的不足。本文在 DocVQA、WikiTableQuestions 与 ChartQA 等公开数据集上设计了训练与消融实验方案，并提出跨窗口实体配对准确率这一诊断性指标，用于量化模型对被窗口边界切分的结构化信息的关联能力。方案分析表明，该方法在保持较低训练成本的同时，有望缓解高分辨率文档理解中长程结构关系建模不足的问题。
+\end{abstract}
+
+\begin{IEEEkeywords}
+多模态大模型；高分辨率文档理解；跨窗口关系建模；图注意力网络；视觉-语言连接器
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+% ======================= I. 引言 =======================
+\section{引言}
+
+\subsection{研究背景}
+近年来，多模态大模型（Multimodal Large Language Model, MLLM）在图文理解、视觉问答等任务上取得显著进展，但其视觉编码器（如 CLIP-ViT）通常只接受固定的低分辨率输入（例如 448$\times$448 像素），难以捕捉文档图像中大量存在的小号文字、密集表格等细粒度信息。Monkey~\cite{monkey} 提出将高分辨率图像切分为若干与视觉编码器原生输入尺寸匹配的局部窗口，分别编码后再输入语言模型，从而突破分辨率瓶颈，支持约 1344$\times$896 像素的输入。然而，窗口切分策略在缓解分辨率限制的同时引入了新的问题：真实文档中的结构化信息——表格的行列对应关系、键值对、跨列合并单元格等——往往跨越多个窗口边界分布。若窗口之间缺乏有效的信息交互机制，模型容易将本应关联的内容误判为互不相关，从而影响下游任务的准确率。
+
+\subsection{研究内容}
+本文以 Monkey 系列（Monkey、TextMonkey、Mini-Monkey）为技术脉络与实验基线，系统分析现有窗口间信息交互方案——局部位移窗口注意力与互补图像金字塔——的适用范围与局限，提出一种在冻结骨干网络前提下、仅需训练轻量模块的坐标引导跨窗口关系适配器（CG-CWRA），并设计相应的训练策略、消融实验方案与评测协议，形成一个可在课程/小规模科研场景下完整实现的算法研究工作。
+
+\subsection{研究意义}
+理论意义：为高分辨率 MLLM 中“窗口切分后如何恢复全局结构关系”这一子问题提供一种显式、可解释、可消融的建模思路，与隐式局部注意力、多尺度金字塔两条既有路线形成互补而非重复。实践意义：由于只需训练一个新增的小模块，骨干网络（视觉编码器与语言模型）全程冻结，方法具有较低的训练与算力成本，适合资源受限场景下的文档理解系统改进，也为后续在连接器层面引入更多先验信息（如版面类型、阅读顺序）提供了可扩展的接口。
+
+% ======================= II. 相关工作 =======================
+\section{相关工作}
+
+\subsection{高分辨率视觉输入处理}
+Vision Transformer~\cite{vit} 最初面向固定低分辨率输入设计，直接处理高分辨率图像会导致 patch 序列长度平方级增长的自注意力开销。Monkey~\cite{monkey} 提出滑窗裁剪方案，将高分辨率图像划分为多个与 ViT 原生输入尺寸匹配的局部窗口分别编码，并通过多层次描述生成增强视觉-语言对齐。NaViT~\cite{navit} 则从另一角度探索了让 ViT 原生支持任意长宽比与分辨率输入的方法，为高分辨率处理提供了不依赖窗口裁剪的替代思路，但尚未在文档理解场景中与窗口裁剪路线进行系统对比。
+
+\subsection{窗口间信息交互}
+窗口裁剪策略虽缓解了分辨率瓶颈，却割裂了跨窗口的语义联系。TextMonkey~\cite{textmonkey} 借鉴 Swin Transformer~\cite{swin} 的位移窗口思想，通过零初始化的位移窗口注意力在 ViT 内部实现相邻窗口间的信息交互，并结合基于相似度的重要视觉特征过滤机制降低输入冗余。Mini-Monkey~\cite{minimonkey} 则从输入端出发，提出互补图像金字塔（CIP），为每个局部窗口额外提供不同尺度的上下文视图，缓解裁剪边界处的语义割裂现象。这两条路线分别在 ViT 内部与输入预处理层面缓解了窗口切分带来的问题，但均未显式建模任意两个窗口——尤其是相隔较远窗口——之间的关系：位移窗口注意力的感受野局限于相邻窗口，图像金字塔提供的是全局上下文而非窗口对之间的直接关联，这是本文工作的切入点。
+
+\subsection{视觉 Token 压缩与选择}
+另一条相关研究路线聚焦于视觉 token 数量本身的压缩以降低推理开销。FastV~\cite{fastv} 在语言模型浅层根据注意力得分动态剪除不重要的视觉 token；VisionZip~\cite{visionzip} 结合 [CLS] 注意力得分与 token 间相似度选择并合并主导 token；SparseVLM~\cite{sparsevlm} 利用跨模态注意力在解码过程中动态稀疏化视觉 token。这些方法的共同目标是效率优化，其重要性打分通常基于语言模型对单个 token 的关注程度，而非窗口之间的结构性关联。本文关注的不是“哪些 token 可以被丢弃”，而是“被窗口边界切分的相关 token 之间应当如何建立联系”，二者是互补而非替代关系，本文在实验部分将二者作为可叠加的正交改进方向讨论。
+
+\subsection{版面/结构感知方法}
+在语言模型输入端融合版面信息也是文档理解的重要方向。LayTokenLLM~\cite{laytoken} 提出在语言模型输入中引入专门的版面 token，并设计交错文本与版面 token 预测的预训练目标，避免为版面信息单独分配大量位置编码；LayTextLLM~\cite{laytext} 将边界框编码为单一 token 并与文本交错输入语言模型。这些方法主要在语言模型输入端、以文本 token 形式融合版面坐标信息，而本文方法作用于视觉-语言连接器之前的视觉特征层面，两者的插入位置与信息载体均不相同，可视为互补的技术路线。
+
+\subsection{视觉-语言连接器}
+视觉-语言连接器负责将视觉编码器输出的特征压缩为语言模型可接受的视觉 token 序列。BLIP-2~\cite{blip2} 提出的 Q-Former 通过一组可学习查询向量对冻结视觉编码器的输出进行交叉注意力压缩，在冻结视觉编码器与语言模型参数的前提下仅训练连接器本身；Flamingo~\cite{flamingo} 的感知重采样器采用了类似思路。这一“冻结骨干、只训练连接器”的范式为本文方法提供了直接的可行性依据：本文提出的跨窗口关系模块正是插入在原有连接器之前的一个新增轻量层，训练时同样保持视觉编码器与语言模型冻结。
+
+\subsection{小结：本文定位}
+综合上述工作，本文将研究问题明确定位为：在窗口裁剪范式下，如何以较低训练成本显式建模任意两个窗口之间（不局限于相邻窗口）的语义关联。该问题不同于 C 小节视觉 token 压缩工作的效率优化目标，也不同于 D 小节文本侧版面融合方法的信息载体与插入位置，同时弥补了 B 小节现有跨窗口交互方案在长程关系建模上的不足。
+
+% ======================= III. 本文方法 =======================
+\section{本文方法}
+
+\subsection{问题定义与总体框架}
+设输入的高分辨率文档图像被划分为 $N$ 个局部窗口，窗口 $i$ 在原图网格中的二维坐标记为 $p_i=(r_i,c_i)$，其中 $r_i$、$c_i$ 分别为其所在的行、列索引。每个窗口经过冻结的视觉编码器独立编码，得到该窗口的 patch 级特征序列。本文提出的坐标引导跨窗口关系适配器（CG-CWRA）插入在 ViT 输出之后、原有视觉-语言连接器（如 Q-Former 式重采样器）之前：输入为 $N$ 个窗口各自的 patch 特征，输出为经过跨窗口关系增强后的 patch 特征，随后按原有流程送入连接器与语言模型。ViT 与语言模型的全部参数保持冻结，仅 CG-CWRA 模块与连接器参数参与训练（图~\ref{fig:framework}）。
+
+\begin{figure}[!t]
+\centering
+% \includegraphics[width=3.3in]{framework}
+\fbox{\parbox{3.1in}{\centering\vspace{1.2cm}
+（此处插入总体框架示意图：\\
+冻结 ViT 编码各窗口 $\rightarrow$ CG-CWRA 跨窗口关系模块 $\rightarrow$ 冻结/微调连接器 $\rightarrow$ 冻结语言模型；\\
+并用不同底纹标出可训练部分与冻结部分）
+\vspace{1.2cm}}}
+\caption{本文方法总体框架示意图。}
+\label{fig:framework}
+\end{figure}
+
+\subsection{窗口坐标编码}
+首先将每个窗口的 patch 特征沿空间维度做均值池化，得到窗口级摘要向量 $h_i \in \mathbb{R}^d$。为使模型感知窗口在原图网格中的相对空间关系，引入坐标嵌入：
+\begin{equation}
+e_i = \mathrm{MLP}_{\mathrm{pos}}(r_i, c_i), \qquad z_i^{(0)} = h_i + e_i
+\label{eq:posenc}
+\end{equation}
+其中 $\mathrm{MLP}_{\mathrm{pos}}$ 为一个两层前馈网络，将离散的行列坐标映射到与 $h_i$ 同维度的向量空间，$z_i^{(0)}$ 为第 $i$ 个窗口在关系模块中的初始节点表示。
+
+\subsection{跨窗口关系图构建}
+将 $N$ 个窗口的节点表示 $\{z_1^{(0)}, \dots, z_N^{(0)}\}$ 视为一个全连接图的节点，采用带相对位置偏置的多头图注意力更新节点表示。对第 $l$ 层、第 $h$ 个注意力头，节点 $i$ 与节点 $j$ 之间的注意力权重为：
+\begin{equation}
+\alpha_{ij}^{(h)} = \mathrm{softmax}_j\!\left[\, \frac{(W_q^h z_i)^{\top}(W_k^h z_j)}{\sqrt{d_h}} + \varphi^h(p_i - p_j) \,\right]
+\label{eq:attn}
+\end{equation}
+其中 $\varphi^h(\cdot)$ 是一个以相对坐标 $(r_i-r_j,\, c_i-c_j)$ 为输入的小型 MLP，学习一个与距离相关的偏置项。该偏置项使模型既能够表达“仅关注相邻窗口”的局部模式（TextMonkey 中位移窗口注意力的特例），也能够学习到对远距离窗口对的显式关注，从而突破局部交互的感受野限制。节点表示更新为：
+\begin{equation}
+z_i^{(l+1)} = z_i^{(l)} + \mathrm{Concat}_h\!\left[\sum_j \alpha_{ij}^{(h)} W_v^h z_j^{(l)}\right] W_o
+\label{eq:update}
+\end{equation}
+堆叠 $L$ 层（实验中 $L$ 取 1 至 2，以控制新增参数量与训练成本）后，得到关系增强后的节点表示 $z_i^{(L)}$，定义残差增量 $\Delta h_i = z_i^{(L)} - z_i^{(0)}$，表示第 $i$ 个窗口从其余窗口获得的额外语义信息。
+
+\subsection{与连接器的衔接}
+为了让关系增量作用于原有的、已在大规模数据上训练好的连接器，采用加性广播的方式将 $\Delta h_i$ 注入窗口 $i$ 的每一个 patch 特征，而不改变 patch 特征的数量与顺序：
+\begin{equation}
+x_{i,k}' = x_{i,k} + W_{\mathrm{proj}}\, \Delta h_i, \qquad k = 1, \dots, K_i
+\label{eq:inject}
+\end{equation}
+其中 $x_{i,k}$ 为窗口 $i$ 第 $k$ 个 patch 的原始特征，$K_i$ 为该窗口的 patch 数量，$W_{\mathrm{proj}}$ 为可训练的线性投影层。更新后的 $\{x_{i,k}'\}$ 按原有流程送入连接器（如 Q-Former）与语言模型，二者结构保持不变，从而最大程度复用已有预训练权重。
+
+\subsection{训练策略}
+训练时冻结视觉编码器与语言模型的全部参数，仅训练 CG-CWRA 模块（含坐标嵌入 $\mathrm{MLP}_{\mathrm{pos}}$、多头图注意力参数、投影层 $W_{\mathrm{proj}}$）以及原有连接器参数；如显存允许，可在语言模型的注意力层引入 LoRA~\cite{lora} 低秩适配作为可选的轻量微调。训练目标为标准的自回归语言建模损失 $\mathcal{L}_{LM}$；当训练集中可获得弱版面标注（如表格单元格、键值对的边界框）时，额外引入跨窗口结构对齐的对比损失 $\mathcal{L}_{align}$，鼓励属于同一结构实体但分处不同窗口的 $\Delta h_i$、$\Delta h_j$ 在表示空间中相互靠近，反之则相互远离。总损失为：
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{LM} + \lambda \cdot \mathcal{L}_{align}
+\label{eq:loss}
+\end{equation}
+其中 $\lambda$ 为平衡系数，在消融实验中对其取值（含 $\lambda=0$，即不使用结构对齐监督）进行比较。
+
+\subsection{创新点总结}
+\begin{itemize}
+\item \textbf{插入位置创新}：作用于冻结 ViT 之后、连接器之前的特征后处理层，不修改 ViT 内部自注意力结构，与 TextMonkey 在 ViT 内部实现位移窗口注意力的方式在实现层面明确区分。
+\item \textbf{建模范围创新}：通过可学习的相对坐标偏置 $\varphi(\cdot)$，显式支持任意两个窗口（含非相邻窗口）之间的直接交互，覆盖了位移窗口注意力（局部）与互补图像金字塔（全局上下文、非窗口对关系）均未覆盖的长程窗口对关系。
+\item \textbf{训练成本创新}：骨干网络全程冻结，新增可训练参数量小，适合课程/小规模科研场景下的算力预算。
+\item \textbf{评测创新}：提出跨窗口实体配对准确率（CWEPA，见 \S\ref{sec:protocol}）这一诊断性指标，直接量化模型对被窗口边界切分的结构化信息的关联能力，而非仅依赖端到端问答准确率这一间接信号。
+\end{itemize}
+
+% ======================= IV. 实验 =======================
+\section{实验}
+
+\subsection{实验数据集}
+DocVQA~\cite{docvqa}：面向扫描文档图像的视觉问答数据集，包含大量表格与版式复杂的文档页面，采用官方划分的验证集评测。WikiTableQuestions（WTQ）~\cite{wtq}：针对半结构化表格的问答数据集，问题通常需要跨行跨列组合表格中的多个单元格才能作答，天然适合评测跨窗口实体配对能力。ChartQA~\cite{chartqa}：图表问答数据集，包含大量需要结合图表中相隔较远的图例、坐标轴与数据点才能回答的问题。三个数据集共同覆盖表格、图表与通用文档三类高分辨率、结构化程度高的场景。
+
+\subsection{实验设置}
+骨干网络：以 TextMonkey（Qwen-VL~\cite{qwenvl} 系）或 Mini-Monkey（InternVL~\cite{internvl} 小尺寸版本）的公开预训练权重作为冻结骨干，二者官方仓库均提供训练入口，便于复现与对比。基线方法包括：(1) Monkey，窗口间无交互；(2) TextMonkey，局部位移窗口注意力；(3) Mini-Monkey，互补图像金字塔；(4) 本文方法，在 (2) 或 (3) 的冻结骨干之上叠加 CG-CWRA 模块。训练硬件、批大小、学习率、训练轮数等具体超参数待正式实验阶段根据实际算力条件确定并在此补充。
+
+\subsection{实验评测协议}
+\label{sec:protocol}
+DocVQA 采用官方 ANLS（Average Normalized Levenshtein Similarity）指标；WTQ 与 ChartQA 采用精确匹配准确率。此外，本文构造\textbf{跨窗口实体配对准确率}（CWEPA）：从 WTQ 与 DocVQA 的标注中筛选出答案所需信息分处两个不同窗口（依据问题相关的边界框标注相对于窗口网格的位置判定）的子集，统计模型在该子集上的准确率，用于专门衡量跨窗口关系建模能力，与整体任务指标形成互补。
+
+\subsection{实验结果}
+表~\ref{tab:main} 给出各方法在三个数据集上的主结果对比（占位，待补充实测数据）。
+
+\begin{table*}[!t]
+\renewcommand{\arraystretch}{1.2}
+\caption{主结果对比（占位表格，训练完成后填入实测数值）}
+\label{tab:main}
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+方法 & DocVQA (ANLS) & WTQ (Acc) & ChartQA (Acc) \\
+\midrule
+Monkey（基线） & 待补充 & 待补充 & 待补充 \\
+TextMonkey（基线） & 待补充 & 待补充 & 待补充 \\
+Mini-Monkey（基线） & 待补充 & 待补充 & 待补充 \\
+TextMonkey + CG-CWRA（本文） & 待补充 & 待补充 & 待补充 \\
+Mini-Monkey + CG-CWRA（本文） & 待补充 & 待补充 & 待补充 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{消融实验}
+表~\ref{tab:ablation} 设计了消融实验方案（占位，待补充实测数据），依次验证 CG-CWRA 各组成部分的贡献。
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.2}
+\caption{消融实验方案（占位表格，训练完成后填入实测数值）}
+\label{tab:ablation}
+\centering
+\footnotesize
+\begin{tabular}{p{4.6cm}cc}
+\toprule
+变体 & DocVQA & CWEPA \\
+\midrule
+完整模型 CG-CWRA & 待补充 & 待补充 \\
+去除跨窗口关系模块（等价于基线） & 待补充 & 待补充 \\
+仅保留局部（相邻窗口）交互 & 待补充 & 待补充 \\
+去除坐标相对位置偏置 $\varphi(\cdot)$ & 待补充 & 待补充 \\
+去除结构对齐损失（$\lambda=0$） & 待补充 & 待补充 \\
+图注意力层数 $L=1$ / $L=2$ 对比 & 待补充 & 待补充 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{结果分析（模板）}
+待实测数据填入后，结果分析应围绕以下三个问题展开：(1) 本文方法在整体任务指标（ANLS/Acc）上相对各基线的提升幅度是否与预期一致，若提升有限需结合 CWEPA 子集结果判断是任务本身对跨窗口关系不敏感，还是模块设计存在不足；(2) 消融实验中“仅保留局部交互”与“完整模型”的差距，可直接反映长程关系建模相对于 TextMonkey 式局部交互的增量价值，是本文核心创新点的关键验证；(3) 去除坐标偏置与去除结构对齐损失两组消融的差距，分别对应“显式坐标信息”与“弱监督结构对齐”两个设计选择各自的贡献，便于讨论未来改进方向。
+
+% ======================= V. 结论 =======================
+\section{结论}
+本文针对高分辨率文档多模态大模型中窗口裁剪范式下长程结构关系建模不足的问题，提出了坐标引导的跨窗口关系适配器 CG-CWRA。该方法在冻结视觉编码器与语言模型的前提下，仅需训练一个插入于 ViT 与连接器之间的轻量图注意力模块，即可显式建模任意两个窗口之间的语义关联，弥补了 TextMonkey 局部位移窗口注意力与 Mini-Monkey 互补图像金字塔在长程关系建模上的局限。本文还设计了配套的训练策略、消融实验方案与跨窗口实体配对准确率这一诊断性评测指标。受限于篇幅与课程周期，本文尚未给出完整的实测结果，后续工作将在 DocVQA、WTQ 与 ChartQA 上完成训练与评测，并探索将该模块进一步扩展到视频、多页文档等更长程的跨区域关系建模场景。
+
+
+% ======================= 参考文献 =======================
+% \clearpage
+\begin{thebibliography}{24}
+
+\bibitem{monkey}
+Z.~Li, B.~Yang, Q.~Liu, Z.~Ma, S.~Zhang, J.~Yang, Y.~Sun, Y.~Liu, and X.~Bai, ``Monkey: Image resolution and text label are important things for large multi-modal models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2024.
+
+\bibitem{textmonkey}
+Y.~Liu, B.~Yang, Q.~Liu, Z.~Li, Z.~Ma, S.~Zhang, and X.~Bai, ``TextMonkey: An OCR-free large multimodal model for understanding document,'' \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, 2026, doi: 10.1109/TPAMI.2026.3653415.
+
+\bibitem{minimonkey}
+M.~Huang, Y.~Liu, D.~Liang, L.~Jin, and X.~Bai, ``Mini-Monkey: Multi-scale adaptive cropping for multimodal large language models,'' in \emph{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2025.
+
+\bibitem{swin}
+Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Z.~Zhang, S.~Lin, and B.~Guo, ``Swin Transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV)}, 2021, pp. 10012--10022.
+
+\bibitem{vit}
+A.~Dosovitskiy \emph{et al.}, ``An image is worth 16x16 words: Transformers for image recognition at scale,'' in \emph{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2021.
+
+\bibitem{clip}
+A.~Radford \emph{et al.}, ``Learning transferable visual models from natural language supervision,'' in \emph{Proc. Int. Conf. Mach. Learn. (ICML)}, 2021.
+
+\bibitem{blip2}
+J.~Li, D.~Li, S.~Savarese, and S.~Hoi, ``BLIP-2: Bootstrapping language-image pre-training with frozen image encoders and large language models,'' in \emph{Proc. Int. Conf. Mach. Learn. (ICML)}, 2023.
+
+\bibitem{flamingo}
+J.-B.~Alayrac \emph{et al.}, ``Flamingo: A visual language model for few-shot learning,'' in \emph{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2022.
+
+\bibitem{gat}
+P.~Velickovic, G.~Cucurull, A.~Casanova, A.~Romero, P.~Lio, and Y.~Bengio, ``Graph attention networks,'' in \emph{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2018.
+
+\bibitem{lora}
+E.~J.~Hu \emph{et al.}, ``LoRA: Low-rank adaptation of large language models,'' in \emph{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2022.
+
+\bibitem{qwenvl}
+J.~Bai \emph{et al.}, ``Qwen-VL: A versatile vision-language model for understanding, localization, text reading, and beyond,'' \emph{arXiv:2308.12966}, 2023.
+
+\bibitem{internvl}
+Z.~Chen \emph{et al.}, ``InternVL: Scaling up vision foundation models and aligning for generic visual-linguistic tasks,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2024.
+
+\bibitem{docvqa}
+M.~Mathew, D.~Karatzas, and C.~V.~Jawahar, ``DocVQA: A dataset for VQA on document images,'' in \emph{Proc. IEEE Winter Conf. Appl. Comput. Vis. (WACV)}, 2021, pp. 2200--2209.
+
+\bibitem{chartqa}
+A.~Masry, D.~X.~Long, J.~Q.~Tan, S.~Joty, and E.~Hoque, ``ChartQA: A benchmark for question answering about charts with visual and logical reasoning,'' in \emph{Findings Assoc. Comput. Linguistics: ACL}, 2022.
+
+\bibitem{wtq}
+P.~Pasupat and P.~Liang, ``Compositional semantic parsing on semi-structured tables,'' in \emph{Proc. 53rd Annu. Meeting Assoc. Comput. Linguistics (ACL)}, 2015, pp. 1470--1480.
+
+\bibitem{fastv}
+L.~Chen, H.~Zhao, T.~Liu, S.~Bai, J.~Lin, C.~Zhou, and B.~Chang, ``An image is worth 1/2 tokens after layer 2: Plug-and-play inference acceleration for large vision-language models,'' \emph{arXiv:2403.06764}, 2024.
+
+\bibitem{visionzip}
+S.~Yang, Y.~Chen, Z.~Tian, C.~Wang, J.~Li, B.~Yu, and J.~Jia, ``VisionZip: Longer is better but not necessary in vision language models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2025, pp. 19792--19802.
+
+\bibitem{sparsevlm}
+Y.~Zhang \emph{et al.}, ``SparseVLM: Visual token sparsification for efficient vision-language model inference,'' in \emph{Proc. Int. Conf. Mach. Learn. (ICML)}, 2025.
+
+\bibitem{laytoken}
+Z.~Zhu, C.~Luo, Z.~Shao, F.~Gao, H.~Xing, Q.~Zheng, and J.~Zhang, ``A simple yet effective layout token in large language models for document understanding,'' \emph{arXiv:2503.18434}, 2025.
+
+\bibitem{laytext}
+J.~Lu \emph{et al.}, ``A bounding box is worth one token: Interleaving layout and text in a large language model for document understanding,'' in \emph{Findings Assoc. Comput. Linguistics: ACL}, 2025, pp. 7252--7273.
+
+\bibitem{deepseekocr}
+H.~Wei, Y.~Sun, and Y.~Li, ``DeepSeek-OCR: Contexts optical compression,'' \emph{arXiv:2510.18234}, 2025.
+
+\bibitem{internvl15}
+Z.~Chen \emph{et al.}, ``How far are we to GPT-4V? Closing the gap to commercial multimodal models with open-source suites,'' \emph{arXiv:2404.16821}, 2024.
+
+\bibitem{transformer}
+A.~Vaswani \emph{et al.}, ``Attention is all you need,'' in \emph{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2017.
+
+\bibitem{navit}
+M.~Dehghani \emph{et al.}, ``Patch n' pack: NaViT, a vision transformer for any aspect ratio and resolution,'' in \emph{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2023.
+
+\end{thebibliography}
+
+% \begin{IEEEbiographynophoto}{作者姓名}
+% 个人简介待补充。
+% \end{IEEEbiographynophoto}
+
+\end{document}

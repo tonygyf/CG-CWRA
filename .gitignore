@@ -1,0 +1,86 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.hypothesis/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Experiment trackers
+wandb/
+mlruns/
+
+# Logs and runtime outputs
+outputs/*
+!outputs/.gitkeep
+!outputs/logs/
+!outputs/logs/.gitkeep
+!outputs/predictions/
+!outputs/predictions/.gitkeep
+!outputs/tb/
+!outputs/tb/.gitkeep
+
+# Datasets
+data/*
+!data/.gitkeep
+!data/README.md
+!data/raw/
+!data/raw/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
+!data/external/
+!data/external/.gitkeep
+!data/cache/
+!data/cache/.gitkeep
+
+# Models / checkpoints / cache
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/README.md
+!artifacts/checkpoints/
+!artifacts/checkpoints/.gitkeep
+!artifacts/pretrained/
+!artifacts/pretrained/.gitkeep
+!artifacts/hf_cache/
+!artifacts/hf_cache/.gitkeep
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv

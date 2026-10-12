@@ -1,21 +1,69 @@
-# A dry-run configuration for the standalone CG-CWRA module. Integrations can
-# retain the model block and add backbone/dataset arguments.
+# A standardized experiment configuration. By default this targets the
+# repository's synthetic smoke dataset so the full training/evaluation pipeline
+# can run in CI, Docker, and fresh machines before real document datasets are
+# mounted under data/raw and data/processed.
 seed: 42
+experiment_name: cgcwra_smoke_benchmark
 output_dir: outputs/experiments/example
 
 model:
-  hidden_size: 1024
+  hidden_size: 16
   num_heads: 8
   num_layers: 2
   mlp_ratio: 2.0
   dropout: 0.0
-  coordinate_hidden_size: 128
-  relative_hidden_size: 128
+  coordinate_hidden_size: 8
+  relative_hidden_size: 8
+
+dataset:
+  name: synthetic_cross_window
+  task_type: classification
+  train_file: data/processed/smoke/train.jsonl
+  val_file: data/processed/smoke/val.jsonl
+  test_file: data/processed/smoke/test.jsonl
+  max_windows: 4
+  patches_per_window: 6
+  num_classes: 3
+  feature_dim: 16
 
 training:
+  batch_size: 8
   learning_rate: 1.0e-4
   weight_decay: 0.01
   epochs: 3
   align_loss_weight: 0.0
   freeze_vision_encoder: true
   freeze_language_model: true
+  gradient_accumulation_steps: 1
+
+baselines:
+  - name: monkey
+    variant: monkey
+    enabled: true
+  - name: textmonkey
+    variant: textmonkey
+    enabled: true
+  - name: mini_monkey
+    variant: mini_monkey
+    enabled: true
+  - name: cgcwra
+    variant: cgcwra
+    enabled: true
+
+resources:
+  num_workers: 0
+  use_amp: false
+  devices: 1
+  max_cpu_threads: 4
+
+logging:
+  log_interval: 10
+  save_predictions: true
+  save_plots: true
+  report_name: experiment_report.json
+
+search:
+  enabled: true
+  learning_rates: [1.0e-4, 3.0e-4]
+  weight_decays: [0.0, 0.01]
+  seeds: [42, 43]

@@ -1,33 +1,43 @@
-FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
+ARG BASE_IMAGE=python:3.11-slim
+FROM ${BASE_IMAGE}
 
-# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV MPLBACKEND=Agg
+ENV HF_HOME=/workspace/cgcwra/artifacts/hf_cache
+ENV TOKENIZERS_PARALLELISM=false
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     wget \
     curl \
-    vim \
-    htop \
-    tmux \
     build-essential \
-    libgl1-mesa-glx \
+    iputils-ping \
+    iproute2 \
+    dnsutils \
+    netcat-openbsd \
+    procps \
+    tini \
+    ca-certificates \
+    libgl1 \
     libglib2.0-0 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /workspace/cgcwra
 
-# Install Python dependencies (we install dependencies first to leverage Docker cache)
-COPY pyproject.toml requirements.txt ./
-RUN pip install --upgrade pip && \
+COPY pyproject.toml README.md requirements.txt ./
+COPY requirements ./requirements
+COPY src ./src
+COPY configs ./configs
+COPY scripts ./scripts
+
+RUN python -m pip install --upgrade pip && \
+    pip install -r requirements/dev.txt && \
     pip install -e .
 
-# We don't copy the rest of the code here to avoid rebuilding the image 
-# every time the code changes. Instead, we mount the codebase in docker-compose.
-# But for standalone usage, one could add: COPY . .
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 CMD ["/bin/bash"]

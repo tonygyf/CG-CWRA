@@ -122,12 +122,25 @@ docker exec -it cgcwra-container /bin/bash
 
 容器内默认工作目录为 `/workspace/cgcwra`，并挂载当前仓库。缓存和输出都通过卷挂载写回宿主机对应的 `artifacts/`、`outputs/` 和 `data/` 目录。
 
+环境检测：
+
+```bash
+bash scripts/verify_environment.sh
+```
+
 ## 训练入口
 
 干跑检查配置：
 
 ```bash
 bash scripts/train.sh configs/train/example.yaml --dry-run
+```
+
+生成 smoke dataset 并跑完整实验：
+
+```bash
+python -m cgcwra.train.cli configs/train/research_smoke.yaml --prepare-smoke-data
+bash scripts/train.sh configs/train/research_smoke.yaml
 ```
 
 评测占位入口：
@@ -147,6 +160,20 @@ enhanced_features = adapter(vit_patch_features, window_grid_coordinates)
 ```
 
 `scripts/train.sh ... --dry-run` 会校验 YAML 并报告新增参数量。真正的端到端训练需按选定的 TextMonkey 或 Mini-Monkey 基座补充数据与连接器适配，冻结策略由 `configs/train/example.yaml` 明确记录。
+
+## 实验设计与数据规范
+
+- 实验设计文档：`docs/experiment_design.md`
+- 数据集清单：`configs/data/docvqa.yaml`、`configs/data/wikitablequestions.yaml`、`configs/data/chartqa.yaml`
+- Baseline 上游代码引导：`bash scripts/bootstrap_baselines.sh`
+
+统一实验框架目前包含：
+
+- 标准化 JSONL 数据格式
+- synthetic cross-window 冒烟数据集生成
+- Monkey / TextMonkey / Mini-Monkey / CG-CWRA 统一训练与评测 runner
+- 自动报告与可视化曲线输出
+- Docker / 宿主机环境检测脚本
 
 ## 后续建议
 

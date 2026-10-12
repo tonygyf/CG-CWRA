@@ -1,0 +1,15 @@
+name: WikiTableQuestions
+task_type: table_qa
+source:
+  homepage: https://ppasupat.github.io/WikiTableQuestions/
+  access: public
+raw_layout:
+  tables_dir: data/raw/wtq/tables
+  annotations_dir: data/raw/wtq/annotations
+processed_layout:
+  train_file: data/processed/wtq/train.jsonl
+  val_file: data/processed/wtq/val.jsonl
+  test_file: data/processed/wtq/test.jsonl
+notes:
+  - Use table cell coordinates to derive window coordinates after high-resolution tiling.
+  - Mark metadata.cross_window_required when answer cells fall into different windows.

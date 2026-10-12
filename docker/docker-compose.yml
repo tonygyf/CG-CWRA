@@ -1,17 +1,18 @@
-version: '3.8'
-
 services:
   cgcwra:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-python:3.11-slim}
     image: cgcwra-env:latest
     container_name: cgcwra-container
-    runtime: nvidia
+    working_dir: /workspace/cgcwra
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - WANDB_API_KEY=${WANDB_API_KEY:-}
-      - HF_HOME=/workspace/cgcwra/artifacts/hf_cache
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      HF_HOME: /workspace/cgcwra/artifacts/hf_cache
+      TOKENIZERS_PARALLELISM: ${TOKENIZERS_PARALLELISM:-false}
+      PYTHONPATH: /workspace/cgcwra/src
     volumes:
       - ..:/workspace/cgcwra
       - ${HOST_DATA_DIR:-../data}:/workspace/cgcwra/data
@@ -19,8 +20,15 @@ services:
       - ${HOST_PRETRAINED_DIR:-../artifacts/pretrained}:/workspace/cgcwra/artifacts/pretrained
       - ${HOST_HF_CACHE_DIR:-../artifacts/hf_cache}:/workspace/cgcwra/artifacts/hf_cache
       - ${HOST_OUTPUTS_DIR:-../outputs}:/workspace/cgcwra/outputs
+      - ${HOST_REPORTS_DIR:-../reports}:/workspace/cgcwra/reports
     ipc: host
-    network_mode: host
+    init: true
     tty: true
     stdin_open: true
     command: /bin/bash
+    healthcheck:
+      test: ["CMD-SHELL", "python -m cgcwra.train.cli configs/train/research_smoke.yaml --dry-run >/tmp/healthcheck.log 2>&1 || cat /tmp/healthcheck.log"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s

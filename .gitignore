@@ -59,6 +59,9 @@ outputs/*
 !outputs/predictions/.gitkeep
 !outputs/tb/.gitkeep
 
+external/*
+!external/.gitkeep
+
 # Logs
 logs/
 *.log

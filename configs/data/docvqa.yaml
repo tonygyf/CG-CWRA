@@ -1,0 +1,15 @@
+name: DocVQA
+task_type: document_vqa
+source:
+  homepage: https://www.docvqa.org/datasets/docvqa
+  access: registration_required
+raw_layout:
+  images_dir: data/raw/docvqa/images
+  annotations_dir: data/raw/docvqa/annotations
+processed_layout:
+  train_file: data/processed/docvqa/train.jsonl
+  val_file: data/processed/docvqa/val.jsonl
+  test_file: data/processed/docvqa/test.jsonl
+notes:
+  - Export question-answer annotations to JSON and normalize them with cgcwra.data.preprocess.normalize_annotation_dataset.
+  - Add cross_window_required metadata when the answer spans multiple cropped windows.

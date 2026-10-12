@@ -26,6 +26,19 @@ The first implemented command is a configuration and parameter-count smoke test:
 bash scripts/train.sh configs/train/example.yaml --dry-run
 ```
 
+Generate the synthetic smoke dataset and run the standardized experiment suite:
+
+```bash
+python -m cgcwra.train.cli configs/train/research_smoke.yaml --prepare-smoke-data
+bash scripts/train.sh configs/train/research_smoke.yaml
+```
+
+Write an environment report on the host or inside Docker:
+
+```bash
+bash scripts/verify_environment.sh
+```
+
 To train against TextMonkey or Mini-Monkey, add a model-specific integration
 that obtains frozen ViT patch features, calls `CGCWRAAdapter`, and forwards the
 returned tensor to that project's original connector. Do not modify frozen

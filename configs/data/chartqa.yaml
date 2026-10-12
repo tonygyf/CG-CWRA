@@ -1,0 +1,15 @@
+name: ChartQA
+task_type: chart_qa
+source:
+  homepage: https://github.com/vis-nlp/ChartQA
+  access: public
+raw_layout:
+  images_dir: data/raw/chartqa/images
+  annotations_dir: data/raw/chartqa/annotations
+processed_layout:
+  train_file: data/processed/chartqa/train.jsonl
+  val_file: data/processed/chartqa/val.jsonl
+  test_file: data/processed/chartqa/test.jsonl
+notes:
+  - Preserve chart type, answer type, and cross_window_required in metadata for subgroup analysis.
+  - Use the same tiling policy as DocVQA to keep window-grid assumptions consistent across datasets.

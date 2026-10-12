@@ -5,8 +5,11 @@
 
 # Data and Models
 data/
+artifacts/
 checkpoints/
 outputs/
+reports/
+external/
 logs/
 .cache/
 *.pt

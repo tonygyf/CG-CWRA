@@ -1,0 +1,296 @@
+{
+  "status": "completed",
+  "note": "single-seed (seed=7) preliminary results; per project convention these do NOT support claims that cross-window CG modeling supersedes the original ViT interaction or that CG can replace it",
+  "protocol": {
+    "dataset": "WikiTableQuestions (WTQ)",
+    "split": "test",
+    "n_samples": 1931,
+    "split_definition": "split_v2 table-disjoint (seed 7), train 4401 / val 505 / test 1931",
+    "feature_source": "bank.bin (window) + globals.bin (global) frozen caches, bit-verified",
+    "feature_verification": {
+      "num_tables": 1953,
+      "images_dir": "/workspace/cgcwra/data/processed/wtq_core/images",
+      "globals_bytes": 4095737856,
+      "bank_source": "/workspace/cgcwra/data/processed/wtq_core/bank/bank.new.bin",
+      "verification": [
+        {
+          "table_id": "200-1",
+          "max_abs_diff": 0.0,
+          "allclose_0.05": true
+        },
+        {
+          "table_id": "200-10",
+          "max_abs_diff": 0.0,
+          "allclose_0.05": true
+        },
+        {
+          "table_id": "200-11",
+          "max_abs_diff": 0.0,
+          "allclose_0.05": true
+        }
+      ],
+      "status": "passed"
+    },
+    "base_model": "TextMonkey (frozen backbone + frozen connector variants)",
+    "prompt_template": "<img></img> {question} Answer:",
+    "decode": "greedy, max_new_tokens=32",
+    "training": "10 epochs, batch 6, lr 1e-4 cosine, 5% warmup, seed 7; trainable: cgcwra / cgcwra_pure = CGCWRAAdapter(fp32, 285M) + downresampler(.float(), 14M) = 299,476,113 params (cgcwra_pure additionally disables ViT window interaction, add_window=False); conn_only = downresampler only = 13,637,633 params; checkpoint = best val EM epoch (cgcwra ep5, cgcwra_pure ep9, conn_only ep7)",
+    "metrics": {
+      "em": "lower/strip/whitespace-collapsed exact match",
+      "anls": "NLS with tau=0.5"
+    }
+  },
+  "variants": {
+    "textmonkey_zero": {
+      "em": 0.2279,
+      "anls": 0.1664,
+      "n": 1931,
+      "predictions_file": "/workspace/cgcwra/outputs/experiments/qa/textmonkey_zero/predictions_test.jsonl",
+      "adapter": false
+    },
+    "conn_only": {
+      "em": 0.2688,
+      "anls": 0.1894,
+      "n": 1931,
+      "predictions_file": "/workspace/cgcwra/outputs/experiments/qa/conn_only/predictions_test.jsonl",
+      "adapter": false,
+      "training": {
+        "seed": 7,
+        "num_trainable_parameters": 13637633,
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.7387,
+            "val_loss": 0.7422,
+            "val_em": 0.2376
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.6858,
+            "val_loss": 0.7245,
+            "val_em": 0.2653
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.653,
+            "val_loss": 0.7202,
+            "val_em": 0.2614
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.621,
+            "val_loss": 0.7251,
+            "val_em": 0.2653
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.5878,
+            "val_loss": 0.7447,
+            "val_em": 0.2752
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5503,
+            "val_loss": 0.7644,
+            "val_em": 0.2792
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.4971,
+            "val_loss": 0.8314,
+            "val_em": 0.2851
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.439,
+            "val_loss": 0.9426,
+            "val_em": 0.2673
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.3849,
+            "val_loss": 1.0468,
+            "val_em": 0.2495
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.3534,
+            "val_loss": 1.0932,
+            "val_em": 0.2614
+          }
+        ],
+        "best_val_em": 0.2851,
+        "best_epoch": 7
+      }
+    },
+    "cgcwra": {
+      "em": 0.2408,
+      "anls": 0.1742,
+      "n": 1931,
+      "predictions_file": "/workspace/cgcwra/outputs/experiments/qa/cgcwra/predictions_test.jsonl",
+      "adapter": true,
+      "training": {
+        "seed": 7,
+        "num_trainable_parameters": 299476113,
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.7641,
+            "val_loss": 0.7691,
+            "val_em": 0.2238
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.7124,
+            "val_loss": 0.7607,
+            "val_em": 0.2238
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.6867,
+            "val_loss": 0.7687,
+            "val_em": 0.2218
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.6637,
+            "val_loss": 0.7639,
+            "val_em": 0.2317
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.6375,
+            "val_loss": 0.7781,
+            "val_em": 0.2455
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5989,
+            "val_loss": 0.8023,
+            "val_em": 0.2376
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.5571,
+            "val_loss": 0.8394,
+            "val_em": 0.2277
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.5074,
+            "val_loss": 0.9381,
+            "val_em": 0.2139
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.4651,
+            "val_loss": 1.0046,
+            "val_em": 0.2257
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.4409,
+            "val_loss": 1.0389,
+            "val_em": 0.2139
+          }
+        ],
+        "best_val_em": 0.2455,
+        "best_epoch": 5
+      }
+    },
+    "cgcwra_pure": {
+      "em": 0.2128,
+      "anls": 0.1529,
+      "n": 1931,
+      "predictions_file": "/workspace/cgcwra/outputs/experiments/qa/cgcwra_pure/predictions_test.jsonl",
+      "adapter": true,
+      "training": {
+        "seed": 7,
+        "num_trainable_parameters": 299476113,
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.7594,
+            "val_loss": 0.775,
+            "val_em": 0.204
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.7092,
+            "val_loss": 0.7628,
+            "val_em": 0.2158
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.6826,
+            "val_loss": 0.7645,
+            "val_em": 0.2198
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.6574,
+            "val_loss": 0.7664,
+            "val_em": 0.2277
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.6292,
+            "val_loss": 0.7789,
+            "val_em": 0.2396
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5911,
+            "val_loss": 0.7922,
+            "val_em": 0.2416
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.5489,
+            "val_loss": 0.8291,
+            "val_em": 0.2356
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.4958,
+            "val_loss": 0.9124,
+            "val_em": 0.2396
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.4456,
+            "val_loss": 0.9877,
+            "val_em": 0.2436
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.4159,
+            "val_loss": 1.026,
+            "val_em": 0.2317
+          }
+        ],
+        "best_val_em": 0.2436,
+        "best_epoch": 9
+      }
+    }
+  },
+  "summary": {
+    "textmonkey_zero": {
+      "em": 0.2279,
+      "anls": 0.1664
+    },
+    "conn_only": {
+      "em": 0.2688,
+      "anls": 0.1894
+    },
+    "cgcwra": {
+      "em": 0.2408,
+      "anls": 0.1742
+    },
+    "cgcwra_pure": {
+      "em": 0.2128,
+      "anls": 0.1529
+    }
+  },
+  "timestamp": "2026-10-13"
+}

@@ -1,0 +1,65 @@
+seed: 7
+experiment_name: cgcwra_wtq_nointer
+output_dir: outputs/experiments/wtq_nointer
+
+model:
+  hidden_size: 4096
+  num_heads: 8
+  num_layers: 2
+  mlp_ratio: 2.0
+  dropout: 0.1
+  coordinate_hidden_size: 128
+  relative_hidden_size: 128
+
+dataset:
+  name: wtq_core_nointer
+  task_type: classification
+  loader: bank
+  bank_dir: data/processed/wtq_core_nointer/bank
+  train_file: data/processed/wtq_core_nointer/split_v2/train.jsonl
+  val_file: data/processed/wtq_core_nointer/split_v2/val.jsonl
+  test_file: data/processed/wtq_core_nointer/split_v2/test.jsonl
+  max_windows: 4
+  patches_per_window: 256
+  num_classes: 100
+  feature_dim: 4096
+
+training:
+  batch_size: 64
+  learning_rate: 2.0e-4
+  weight_decay: 0.01
+  epochs: 40
+  align_loss_weight: 0.0
+  freeze_vision_encoder: true
+  freeze_language_model: true
+  gradient_accumulation_steps: 1
+  lr_scheduler: constant
+  warmup_epochs: 0
+  early_stopping_patience: 10
+
+baselines:
+  - name: textmonkey
+    variant: textmonkey
+    enabled: true
+  - name: cgcwra
+    variant: cgcwra
+    enabled: true
+
+resources:
+  num_workers: 8
+  use_amp: true
+  devices: 1
+  max_cpu_threads: 16
+
+logging:
+  log_interval: 300
+  save_predictions: true
+  save_plots: true
+  report_name: wtq_nointer_report.json
+  diagnose_test_curve: true
+
+search:
+  enabled: false
+  learning_rates: []
+  weight_decays: []
+  seeds: []

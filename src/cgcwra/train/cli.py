@@ -30,12 +30,27 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print experiment results as JSON",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="override config.seed (for multi-seed variance estimation)",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config(args.config)
+    if args.seed is not None:
+        from dataclasses import replace
+
+        config = replace(
+            config,
+            seed=args.seed,
+            output_dir=config.output_dir / f"seed{args.seed}",
+        )
+        print(f"Seed override: {args.seed} (output: {config.output_dir})")
     adapter = CGCWRAAdapter(config.model)
     parameter_count = sum(
         parameter.numel() for parameter in adapter.parameters() if parameter.requires_grad

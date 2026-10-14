@@ -9,3 +9,14 @@ pandas>=2.0
 psutil>=5.9
 scikit-learn>=1.3
 matplotlib>=3.7
+# TextMonkey / Qwen-VL vendored remote code runtime deps (see external/monkey_model)
+tiktoken>=0.7
+einops>=0.8
+einops-exts>=0.0.4
+peft>=0.11
+torchvision>=0.16
+Pillow>=10.0
+# NOTE: transformers-stream-generator 0.0.5 is incompatible with
+# transformers>=5 (it imports the removed top-level DisjunctiveConstraint).
+# It is only used by TextMonkey's optional streaming chat; do NOT add it here
+# while the container stays on transformers 5.x.

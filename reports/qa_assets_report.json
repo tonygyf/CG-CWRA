@@ -1,0 +1,24 @@
+{
+  "num_tables": 1953,
+  "images_dir": "/workspace/cgcwra/data/processed/wtq_core/images",
+  "globals_bytes": 4095737856,
+  "bank_source": "/workspace/cgcwra/data/processed/wtq_core/bank/bank.new.bin",
+  "verification": [
+    {
+      "table_id": "200-1",
+      "max_abs_diff": 0.0,
+      "allclose_0.05": true
+    },
+    {
+      "table_id": "200-10",
+      "max_abs_diff": 0.0,
+      "allclose_0.05": true
+    },
+    {
+      "table_id": "200-11",
+      "max_abs_diff": 0.0,
+      "allclose_0.05": true
+    }
+  ],
+  "status": "passed"
+}

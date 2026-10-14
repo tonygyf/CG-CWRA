@@ -9,7 +9,8 @@ artifacts/
 checkpoints/
 outputs/
 reports/
-external/
+# external/monkey_model is small vendored runtime code required to load
+# TextMonkey; keep it in the build context (weights remain mount-only).
 logs/
 .cache/
 *.pt

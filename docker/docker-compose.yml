@@ -22,6 +22,7 @@ services:
       - ${HOST_OUTPUTS_DIR:-../outputs}:/workspace/cgcwra/outputs
       - ${HOST_REPORTS_DIR:-../reports}:/workspace/cgcwra/reports
     ipc: host
+    gpus: all
     init: true
     tty: true
     stdin_open: true

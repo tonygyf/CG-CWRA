@@ -61,6 +61,11 @@ outputs/*
 
 external/*
 !external/.gitkeep
+# TextMonkey 官方 vendored 代码属于仓库源码，需要版本化（权重仍不入库）。
+!external/monkey_model/
+!external/monkey_model/**
+external/monkey_model/**/__pycache__/
+external/monkey_model/**/*.pyc
 
 # Logs
 logs/

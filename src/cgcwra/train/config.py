@@ -21,6 +21,9 @@ class TrainingConfig:
     freeze_vision_encoder: bool
     freeze_language_model: bool
     gradient_accumulation_steps: int = 1
+    lr_scheduler: str = "constant"
+    warmup_epochs: int = 0
+    early_stopping_patience: int = 0
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,8 @@ class DatasetConfig:
     patches_per_window: int
     num_classes: int
     feature_dim: int
+    loader: str = "jsonl"
+    bank_dir: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,7 @@ class LoggingConfig:
     save_predictions: bool = True
     save_plots: bool = True
     report_name: str = "experiment_report.json"
+    diagnose_test_curve: bool = False
 
 
 @dataclass(frozen=True)
@@ -99,6 +105,10 @@ def load_config(path: str | Path) -> RunConfig:
             patches_per_window=int(raw["dataset"]["patches_per_window"]),
             num_classes=int(raw["dataset"]["num_classes"]),
             feature_dim=int(raw["dataset"]["feature_dim"]),
+            loader=str(raw["dataset"].get("loader", "jsonl")),
+            bank_dir=(
+                Path(raw["dataset"]["bank_dir"]) if raw["dataset"].get("bank_dir") else None
+            ),
         )
         baselines = tuple(BaselineConfig(**item) for item in raw["baselines"])
         resources = ResourceConfig(**raw.get("resources", {}))

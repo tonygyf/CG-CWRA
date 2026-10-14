@@ -31,6 +31,9 @@ WORKDIR /workspace/cgcwra
 COPY pyproject.toml README.md requirements.txt ./
 COPY requirements ./requirements
 COPY src ./src
+# Vendored TextMonkey official code (Yuliang-Liu/Monkey); required to load
+# artifacts/pretrained/TextMonkey — its config auto_map alone is insufficient.
+COPY external ./external
 COPY configs ./configs
 COPY scripts ./scripts
 
